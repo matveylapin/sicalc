@@ -21,7 +21,10 @@ sicalc_real multiplication(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret
 
 sicalc_real division(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
-    return arg1 / arg2;
+    sicalc_real result = arg1 / arg2;
+    if (!isfinite(result))
+        ret->error = SICALC_STATUS_ZERO_DEVISION;
+    return result;
 }
 
 sicalc_real si_pow(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
@@ -35,6 +38,11 @@ sicalc_real si_pow(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 
 sicalc_real si_sqrt(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
+    if (arg1 < 0.0)
+    {
+        ret->error = SICALC_STATUS_NEGATINE_ARGUMENT;
+        return 0.0;
+    }
 #ifdef SICALC_FLOAT
     return sqrtf(arg1);
 #else
@@ -105,6 +113,30 @@ sicalc_real si_exp(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 #endif
 }
 
+sicalc_real factorial(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
+{
+#ifdef SICALC_FLOAT
+    int arg_int = roundf(arg1);
+#else
+    int arg_int = round(arg1);
+#endif
+
+    if (arg_int < 1)
+    {
+        ret->error = SICALC_STATUS_NEGATINE_ARGUMENT;
+        return 0.0;
+    }
+
+    sicalc_real result = 1.0;
+
+    for (int i = 1; i <= arg_int; i++)
+    {
+        result *= i;
+    }
+
+    return result;
+}
+
 sicalc_action_t operators_table[] = {
     {"+", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, sum},
     {"-", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, difference},
@@ -118,5 +150,6 @@ sicalc_action_t operators_table[] = {
     {"sin", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_sin},
     {"cos", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_cos},
     {"tan", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_tan},
-    {"exp", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_exp}
+    {"exp", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_exp},
+    {"!", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION_NO_BRACKETS, factorial}
 };

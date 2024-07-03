@@ -46,6 +46,7 @@ int main(int argc, char **argv)
     TESTCASE("(5 + 3) * 2 - 10", 6, &ret);
     TESTCASE("12 / 3 + 4 * 5 - 2", 22, &ret);
     TESTCASE("(10 - 2) ^ 2 / (2 + 3)", 12.8, &ret);
+    TESTCASE("!(3)", 6, &ret);
     TESTCASE("sqrt(16)", 4, &ret);
     TESTCASE("sqrt(25)", 5, &ret);
     TESTCASE("sqrt(0.25)", 0.5, &ret);

@@ -23,9 +23,10 @@
 #endif
 
 typedef enum {
-    SICALC_ERROR_OK = 0,
-    SICALC_ERROR_ZERO_DEVISION,
-    SICALC_ERROR_NEGATINE_ROOT
+    SICALC_STATUS_OK = 0,
+    SICALC_STATUS_ZERO_DEVISION,
+    SICALC_STATUS_NEGATINE_ARGUMENT,
+    SICALC_STATUS_SKIP
 } sicalc_error_t;
 
 typedef enum {
@@ -33,11 +34,12 @@ typedef enum {
     SICALC_ACTION_ARGS1 = (1 << 1),
     SICALC_ACTION_ARGS2 = (1 << 2),
     SICALC_ACTION_FUNCTION = (1 << 3),
-    SICALC_ACTION_OPERATOR = (1 << 4),
+    SICALC_ACTION_FUNCTION_NO_BRACKETS = (1 << 4),
+    SICALC_ACTION_OPERATOR = (1 << 5),
 } sicalc_action_info_t;
 
 typedef struct sicalc_info_s {
-    const char* msg;
+    // const char* msg; // not used
     sicalc_error_t error;
 } *sicalc_info_t;
 
@@ -60,6 +62,7 @@ typedef struct sicalc_token_s
 } *sicalc_token_t;
 
 void sicalc_init_token(sicalc_token_t token);
+void sicalc_erase_token(sicalc_token_t token);
 
 sicalc_real sicalc_solve_string(const char* eq, sicalc_info_t ret);
 sicalc_real sicalc_solve_token(sicalc_token_t token, sicalc_info_t ret);

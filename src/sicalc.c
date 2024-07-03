@@ -9,8 +9,11 @@
 static int get_token_start(const char* eq, const char* token_id)
 {
     int braces_counter = 0, brackets_counter = 0;
+    int len = strlen(eq) - strlen(token_id);
 
-    for (int i = 0; i < strlen(eq) - strlen(token_id); i++)
+    if (len < 0) return -1;
+
+    for (int i = 0; i < len; i++)
     {
         char c = eq[i];
 
@@ -19,13 +22,12 @@ static int get_token_start(const char* eq, const char* token_id)
         if (c == '{') braces_counter++;
         if (c == ')') brackets_counter--;
         if (c == '}') braces_counter--;
-        
+
         if (brackets_counter == 0 && braces_counter == 0 && !strncmp(&eq[i], token_id, strlen(token_id)))
         {
             return i;
         }
     }
-
     return -1;
 }
 
@@ -52,7 +54,6 @@ void parse_token(sicalc_token_t token)
     for (int i = 0; i < ARRAY_SIZE(operators_table); i++)
     {
         int braces_counter = 0, brackets_counter = 0;
-
         sicalc_action_t* op = &operators_table[i];
 
         int index = get_token_start(token->raw, op->id);
@@ -100,6 +101,21 @@ void sicalc_init_token(sicalc_token_t token)
     token->args[0] = NULL;
     token->args[1] = NULL;
     token->action = NULL;
+    token->info.error = SICALC_STATUS_OK;
+}
+
+void sicalc_erase_token(sicalc_token_t token)
+{
+    free(token->raw);
+
+    for (int i = 0; i < SICALC_TOKEN_ARGS_COUNT; i++)
+    {
+        if (token->args[i] != NULL)
+        {
+            sicalc_erase_token(token->args[i]);
+            free(token->args[i]);
+        }
+    }
 }
 
 sicalc_real sicalc_solve_token(sicalc_token_t token, sicalc_info_t ret)
@@ -137,6 +153,5 @@ sicalc_real sicalc_solve_string(const char* eq, sicalc_info_t ret)
 
     sicalc_solve_token(&root_token, ret);
 
-    // free(str);
     return root_token.result;
 }
