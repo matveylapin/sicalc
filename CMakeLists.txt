@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
-
 project(sicalc_cli)
+
+set(CMAKE_C_FLAGS_DEBUG "-Wall -DDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "-Wall -Werror=return-type -Werror=unused-variable")
 
 include_directories(include)
 

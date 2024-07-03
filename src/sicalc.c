@@ -6,10 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ACTION_ARG_COUNT_MASK 0b11
+#define ACTION_ARG_COUNT(t) (int)(t & ACTION_ARG_COUNT_MASK)
+
 static int get_token_start(const char* eq, const char* token_id)
 {
     int braces_counter = 0, brackets_counter = 0;
-    int len = strlen(eq) - strlen(token_id);
+    int len = strlen(eq) - strlen(token_id) + 1;
 
     if (len < 0) return -1;
 
@@ -39,7 +42,7 @@ static void create_new_token(sicalc_token_t token, const char* raw, int start, i
     strncpy(token->raw, &raw[start], len);
     token->raw[len] = '\0';
 
-    remove_brackets(token->raw);
+    remove_side_brackets(token->raw);
 }
 
 void parse_token(sicalc_token_t token)
@@ -53,8 +56,7 @@ void parse_token(sicalc_token_t token)
 
     for (int i = 0; i < ARRAY_SIZE(operators_table); i++)
     {
-        int braces_counter = 0, brackets_counter = 0;
-        sicalc_action_t* op = &operators_table[i];
+        sicalc_action_t op = &operators_table[i];
 
         int index = get_token_start(token->raw, op->id);
 
@@ -62,8 +64,13 @@ void parse_token(sicalc_token_t token)
         {
             token->action = op;
             DMSG("Find %s. Id: %s", token->raw, token->action->id);
+            
+            if (ACTION_ARG_COUNT(op->type) == 0)
+            {
+                return;
+            }
 
-            if (op->type & SICALC_ACTION_OPERATOR && op->type & SICALC_ACTION_ARGS2)
+            if (op->type & SICALC_ACTION_OPERATOR && ACTION_ARG_COUNT(op->type) == 2)
             {
                 token->args[0] = malloc(sizeof(struct sicalc_token_s));
                 create_new_token(token->args[0], token->raw, 0, index);
@@ -72,27 +79,41 @@ void parse_token(sicalc_token_t token)
                 create_new_token(token->args[1], token->raw, index + strlen(op->id), strlen(token->raw) - index - strlen(op->id));
             }
 
-            if (op->type & SICALC_ACTION_FUNCTION && op->type & SICALC_ACTION_ARGS1)
+            if (op->type & SICALC_ACTION_FUNCTION && ACTION_ARG_COUNT(op->type) == 1)
             {
                 token->args[0] = malloc(sizeof(struct sicalc_token_s));
                 create_new_token(token->args[0], token->raw, strlen(op->id), strlen(token->raw) - strlen(op->id));
             }
 
-            if (op->type & SICALC_ACTION_ARGS1 || op->type & SICALC_ACTION_ARGS2)
+            if (ACTION_ARG_COUNT(op->type) > 0 && token->args[0] == NULL)
+                    token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
+            
+            if (ACTION_ARG_COUNT(op->type) == 2 && token->args[1] == NULL)
+                    token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
+
+            if (token->info.error != SICALC_STATUS_OK)
+            {
+                DMSG("Error: %d", token->info.error);
+                return;
+            }
+
+            if (token->args[0] != NULL)
             {
                 DMSG("\tARG0: %s", token->args[0]->raw);
                 parse_token(token->args[0]);
             }
 
-            if (op->type & SICALC_ACTION_ARGS2)
+            if (token->args[1] != NULL)
             {
                 DMSG("\tARG1: %s", token->args[1]->raw);
                 parse_token(token->args[1]);
             }
 
-            break;
+            return;
         }
     }
+
+    token->info.error = SICALC_STATUS_MISSING_ACTION;
 }
 
 void sicalc_init_token(sicalc_token_t token)
@@ -118,7 +139,7 @@ void sicalc_erase_token(sicalc_token_t token)
     }
 }
 
-sicalc_real sicalc_solve_token(sicalc_token_t token, sicalc_info_t ret)
+sicalc_real sicalc_solve_token(sicalc_token_t token)
 {
     if (token->action != NULL)
     {
@@ -128,11 +149,11 @@ sicalc_real sicalc_solve_token(sicalc_token_t token, sicalc_info_t ret)
         {
             if (token->args[i] != NULL)
             {
-                args_results[i] = sicalc_solve_token(token->args[i], ret);
+                args_results[i] = sicalc_solve_token(token->args[i]);
             }
         }
 
-        token->result = token->action->function(args_results[0], args_results[1], ret);
+        token->result = token->action->function(args_results[0], args_results[1], &token->info);
     }
 
     DMSG("Token %s result: %f", token->raw, token->result);
@@ -145,13 +166,12 @@ sicalc_real sicalc_solve_string(const char* eq, sicalc_info_t ret)
     strcpy(str, eq);
     remove_whitespaces(str, eq);
 
-    struct sicalc_token_s root_token;
-    sicalc_init_token(&root_token);
+    SICALC_TOKEN_DEFINE(root_token);
 
     root_token.raw = str;
     parse_token(&root_token);
 
-    sicalc_solve_token(&root_token, ret);
+    sicalc_solve_token(&root_token);
 
     return root_token.result;
 }

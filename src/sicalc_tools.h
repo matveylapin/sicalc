@@ -64,13 +64,17 @@ bool in_brackets(const char* src)
     return ret;
 }
 
-void remove_brackets(char* str)
+bool remove_side_brackets(char* str)
 {
-    if (in_brackets(str))
+    bool in = in_brackets(str);
+    
+    if (in)
     {
         memmove(str, str+1, strlen(str));
         str[strlen(str)-1] = '\0';
     }
+
+    return in;
 }
 
 #endif // __SICALC_TOOLS_H__

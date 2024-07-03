@@ -13,29 +13,33 @@
 #define sicalc_real double
 #endif
 
-#define SICALC_TOKEN_ARGS_COUNT (int)2
-
-// #define SICALC_DEBUG
-#ifdef SICALC_DEBUG
+#if defined(DEBUG) || defined(SICALC_DEBUG)
 #define DMSG(str, ...) printf("DEBUG: " str "\n", __VA_ARGS__)
 #else
 #define DMSG(str, ...)
 #endif
 
+#define SICALC_TOKEN_ARGS_COUNT (int)2
+
+#define SICALC_TOKEN_DEFINE(token) \
+struct sicalc_token_s token; \
+sicalc_init_token(&token);
+
 typedef enum {
     SICALC_STATUS_OK = 0,
     SICALC_STATUS_ZERO_DEVISION,
     SICALC_STATUS_NEGATINE_ARGUMENT,
-    SICALC_STATUS_SKIP
+    SICALC_STATUS_SKIP,
+    SICALC_STATUS_MISSING_ARGUMENT,
+    SICALC_STATUS_MISSING_ACTION
 } sicalc_error_t;
 
 typedef enum {
-    SICALC_ACTION_ARGS0 = (1 << 0),
-    SICALC_ACTION_ARGS1 = (1 << 1),
-    SICALC_ACTION_ARGS2 = (1 << 2),
+    SICALC_ACTION_ARGS0 = 0,
+    SICALC_ACTION_ARGS1 = 1,
+    SICALC_ACTION_ARGS2 = 2,
     SICALC_ACTION_FUNCTION = (1 << 3),
-    SICALC_ACTION_FUNCTION_NO_BRACKETS = (1 << 4),
-    SICALC_ACTION_OPERATOR = (1 << 5),
+    SICALC_ACTION_OPERATOR = (1 << 4),
 } sicalc_action_info_t;
 
 typedef struct sicalc_info_s {
@@ -50,7 +54,7 @@ typedef struct sicalc_action_s
     const char* id;
     sicalc_action_info_t type;
     sicalc_action_fn function;
-} sicalc_action_t;
+} *sicalc_action_t;
 
 typedef struct sicalc_token_s
 {
@@ -65,6 +69,6 @@ void sicalc_init_token(sicalc_token_t token);
 void sicalc_erase_token(sicalc_token_t token);
 
 sicalc_real sicalc_solve_string(const char* eq, sicalc_info_t ret);
-sicalc_real sicalc_solve_token(sicalc_token_t token, sicalc_info_t ret);
+sicalc_real sicalc_solve_token(sicalc_token_t token);
 
 #endif // __SICALC_H__

@@ -2,7 +2,8 @@
 
 #include <math.h>
 
-#define DEG2RAD(a) a * (sicalc_real)M_PI / (sicalc_real)180.0
+// #define DEG2RAD(a) a * (sicalc_real)M_PI / (sicalc_real)180.0
+#define DEG2RAD(a) a
 
 sicalc_real sum(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
@@ -80,27 +81,27 @@ sicalc_real si_log10(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 sicalc_real si_sin(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
 #ifdef SICALC_FLOAT
-    return sinf(DEG2RAD(arg1));
+    return sinf(arg1);
 #else
-    return sin(DEG2RAD(arg1));
+    return sin(arg1);
 #endif
 }
 
 sicalc_real si_cos(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
 #ifdef SICALC_FLOAT
-    return cosf(DEG2RAD(arg1));
+    return cosf(arg1);
 #else
-    return cos(DEG2RAD(arg1));
+    return cos(arg1);
 #endif
 }
 
 sicalc_real si_tan(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
 {
 #ifdef SICALC_FLOAT
-    return tanf(DEG2RAD(arg1));
+    return tanf(arg1);
 #else
-    return tan(DEG2RAD(arg1));
+    return tan(arg1);
 #endif
 }
 
@@ -137,7 +138,12 @@ sicalc_real factorial(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
     return result;
 }
 
-sicalc_action_t operators_table[] = {
+sicalc_real si_pi(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
+{
+    return (sicalc_real)M_PI;
+}
+
+struct sicalc_action_s operators_table[] = {
     {"+", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, sum},
     {"-", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, difference},
     {"*", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, multiplication},
@@ -151,5 +157,6 @@ sicalc_action_t operators_table[] = {
     {"cos", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_cos},
     {"tan", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_tan},
     {"exp", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_exp},
-    {"!", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION_NO_BRACKETS, factorial}
+    {"!", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, factorial},
+    {"pi", SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION, si_pi}
 };
