@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "__locale": "c",
+        "sicalc.h": "c",
+        "complex": "c",
+        "bitset": "c"
+    }
+}
