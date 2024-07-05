@@ -9,10 +9,38 @@
 #define ACTION_ARG_COUNT_MASK 0b11
 #define ACTION_ARG_COUNT(t) (int)(t & ACTION_ARG_COUNT_MASK)
 
-static int get_token_start(const char* eq, const char* token_id)
+static int validate_brackets(sicalc_token_t token)
+{
+    stack_item_t stack;
+
+    for (int i = 0; i < strlen(token->raw); i++)
+    {
+        if(strchr("{(", token->raw[i]))
+        {
+            DMSG("gay%d",1);
+            stack_push(&stack, token->raw[i]);
+        }
+        else {
+            if(
+                strchr("})", token->raw[i]) &&
+                (stack_empty(stack) || inverse_bracket(token->raw[i]) != stack_pop(&stack))
+            )
+            {
+                DMSG("gay%d",2);
+                token->info.index = i;
+                token->info.error = SICALC_STATUS_BRACKETS_ERROR;
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+static int get_token_start(const char* eq, struct sicalc_action_s* action)
 {
     int braces_counter = 0, brackets_counter = 0;
-    int len = strlen(eq) - strlen(token_id) + 1;
+    int len = strlen(eq) - strlen(action->id) + 1;
 
     if (len < 0) return -1;
 
@@ -26,7 +54,7 @@ static int get_token_start(const char* eq, const char* token_id)
         if (c == ')') brackets_counter--;
         if (c == '}') braces_counter--;
 
-        if (brackets_counter == 0 && braces_counter == 0 && !strncmp(&eq[i], token_id, strlen(token_id)))
+        if (brackets_counter == 0 && braces_counter == 0 && !strncmp(&eq[i], action->id, strlen(action->id)))
         {
             return i;
         }
@@ -42,7 +70,8 @@ static void create_new_token(sicalc_token_t token, const char* raw, int start, i
     strncpy(token->raw, &raw[start], len);
     token->raw[len] = '\0';
 
-    remove_side_brackets(token->raw);
+    if (!remove_side_brackets(token->raw, '(')) remove_side_brackets(token->raw, '{');
+    // remove_side_brackets(token->raw, '{');
 }
 
 void parse_token(sicalc_token_t token)
@@ -58,7 +87,7 @@ void parse_token(sicalc_token_t token)
     {
         sicalc_action_t op = &operators_table[i];
 
-        int index = get_token_start(token->raw, op->id);
+        int index = get_token_start(token->raw, op);
 
         if (index >= 0)
         {
@@ -96,24 +125,26 @@ void parse_token(sicalc_token_t token)
                 DMSG("Error: %d", token->info.error);
                 return;
             }
-
-            if (token->args[0] != NULL)
+            
+            for (int j = 0; j < SICALC_TOKEN_ARGS_COUNT; j++)
             {
-                DMSG("\tARG0: %s", token->args[0]->raw);
-                parse_token(token->args[0]);
-            }
+                if (token->args[j] != NULL)
+                {
+                    DMSG("\tARG%d: %s", j, token->args[j]->raw);
+                    parse_token(token->args[j]);
 
-            if (token->args[1] != NULL)
-            {
-                DMSG("\tARG1: %s", token->args[1]->raw);
-                parse_token(token->args[1]);
+                    if (token->args[j]->info.error != SICALC_STATUS_OK)
+                    {
+                        token->info.error = SICALC_STATUS_SKIP;
+                    }
+                }
             }
 
             return;
         }
     }
 
-    token->info.error = SICALC_STATUS_MISSING_ACTION;
+    token->info.error = SICALC_STATUS_UNKNOWN_ACTION;
 }
 
 void sicalc_init_token(sicalc_token_t token)
@@ -123,6 +154,7 @@ void sicalc_init_token(sicalc_token_t token)
     token->args[1] = NULL;
     token->action = NULL;
     token->info.error = SICALC_STATUS_OK;
+    token->info.index = -1;
 }
 
 void sicalc_erase_token(sicalc_token_t token)
@@ -160,18 +192,21 @@ sicalc_real sicalc_solve_token(sicalc_token_t token)
     return token->result;
 }
 
-sicalc_real sicalc_solve_string(const char* eq, sicalc_info_t ret)
+sicalc_real sicalc_solve_string(const char* eq, sicalc_token_t token)
 {
+    if (!token) return 0.0;
+
     char* str = (char*)malloc(strlen(eq) + 1);
     strcpy(str, eq);
+
     remove_whitespaces(str, eq);
+    token->raw = str;
 
-    SICALC_TOKEN_DEFINE(root_token);
+    if (!validate_brackets(token)) return 0.0;
 
-    root_token.raw = str;
-    parse_token(&root_token);
+    parse_token(token);
 
-    sicalc_solve_token(&root_token);
+    sicalc_solve_token(token);
 
-    return root_token.result;
+    return token->result;
 }

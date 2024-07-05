@@ -6,12 +6,13 @@
 
 int main(int argc, char **argv)
 {
-    struct sicalc_info_s ret = {0};
     char* eq = "(5 + 3) * 2 - 10";
-    sicalc_real a = sicalc_solve_string(argv[1], &ret);
+
+    SICALC_TOKEN_DEFINE(root_token);
+    sicalc_real a = sicalc_solve_string(argv[1], &root_token);
 
     printf("%lf\n", a);
-    printf("Error:%d\n", ret.error);
+    printf("Error:%d\n", root_token.info.error);
 
     // for (int i = 0; i < argc; i++)
     // {
