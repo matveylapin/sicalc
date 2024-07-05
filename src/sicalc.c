@@ -11,13 +11,12 @@
 
 static int validate_brackets(sicalc_token_t token)
 {
-    stack_item_t stack;
+    stack_item_t stack = NULL;
 
     for (int i = 0; i < strlen(token->raw); i++)
     {
         if(strchr("{(", token->raw[i]))
         {
-            DMSG("gay%d",1);
             stack_push(&stack, token->raw[i]);
         }
         else {
@@ -26,12 +25,21 @@ static int validate_brackets(sicalc_token_t token)
                 (stack_empty(stack) || inverse_bracket(token->raw[i]) != stack_pop(&stack))
             )
             {
-                DMSG("gay%d",2);
+
                 token->info.index = i;
                 token->info.error = SICALC_STATUS_BRACKETS_ERROR;
+                
                 return 0;
             }
         }
+    }
+
+    if (!stack_empty(stack))
+    {
+        token->info.index = strlen(token->raw);
+        token->info.error = SICALC_STATUS_BRACKETS_ERROR;
+        stack_erase(&stack);
+        return 0;
     }
 
     return 1;

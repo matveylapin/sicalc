@@ -33,7 +33,6 @@ void stack_push(stack_item_t* root, char data)
     stack_item_t stack_item = stack_new(data);
     stack_item->next = *root;
     *root = stack_item;
-    printf("%c pushed to stack\n", data);
 }
 
 char stack_pop(stack_item_t* root)
@@ -46,6 +45,12 @@ char stack_pop(stack_item_t* root)
     free(temp);
 
     return popped;
+}
+
+void stack_erase(stack_item_t* root)
+{
+    while (stack_empty(*root))
+        stack_pop(root);
 }
 
 void remove_whitespaces(char* dest, const char* src)
