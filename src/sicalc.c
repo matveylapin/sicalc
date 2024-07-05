@@ -9,7 +9,14 @@
 #define ACTION_ARG_COUNT_MASK 0b11
 #define ACTION_ARG_COUNT(t) (int)(t & ACTION_ARG_COUNT_MASK)
 
-static int validate_brackets(sicalc_token_t token)
+/**
+ * @brief Validate a token raw brackets
+ * 
+ * @param token 
+ * @return bool true valid token
+ * @return bool false invalid token
+ */
+static bool validate_brackets(sicalc_token_t token)
 {
     stack_item_t stack = NULL;
 
@@ -29,7 +36,7 @@ static int validate_brackets(sicalc_token_t token)
                 token->info.index = i;
                 token->info.error = SICALC_STATUS_BRACKETS_ERROR;
                 
-                return 0;
+                return false;
             }
         }
     }
@@ -39,37 +46,21 @@ static int validate_brackets(sicalc_token_t token)
         token->info.index = strlen(token->raw);
         token->info.error = SICALC_STATUS_BRACKETS_ERROR;
         stack_erase(&stack);
-        return 0;
+
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
-static int get_token_start(const char* eq, struct sicalc_action_s* action)
-{
-    int braces_counter = 0, brackets_counter = 0;
-    int len = strlen(eq) - strlen(action->id) + 1;
-
-    if (len < 0) return -1;
-
-    for (int i = 0; i < len; i++)
-    {
-        char c = eq[i];
-
-        // take only out of brackets action
-        if (c == '(') brackets_counter++;
-        if (c == '{') braces_counter++;
-        if (c == ')') brackets_counter--;
-        if (c == '}') braces_counter--;
-
-        if (brackets_counter == 0 && braces_counter == 0 && !strncmp(&eq[i], action->id, strlen(action->id)))
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
+/**
+ * @brief Create a new token object
+ * 
+ * @param token 
+ * @param raw 
+ * @param start 
+ * @param len 
+ */
 static void create_new_token(sicalc_token_t token, const char* raw, int start, int len)
 {
     sicalc_init_token(token);
@@ -79,10 +70,151 @@ static void create_new_token(sicalc_token_t token, const char* raw, int start, i
     token->raw[len] = '\0';
 
     if (!remove_side_brackets(token->raw, '(')) remove_side_brackets(token->raw, '{');
-    // remove_side_brackets(token->raw, '{');
 }
 
-void parse_token(sicalc_token_t token)
+/**
+ * @brief 
+ * 
+ * @param token 
+ * @param action 
+ * @return int 1 - found and append
+ * @return int 0 - not found
+ * @return int -1 - parse error
+ */
+static int parse_function_args(sicalc_token_t token, sicalc_action_t action)
+{
+    int len = strlen(token->raw) - strlen(action->id) + 1;
+
+    if (len <= 0) return 0;
+
+    if(strncmp(token->raw, action->id, strlen(action->id)) != 0)
+    {
+        return 0;
+    }
+
+    switch (ACTION_ARG_COUNT(action->type))
+    {
+    case SICALC_ACTION_ARGS0:
+    {
+        if (len != 1)
+        {
+            token->info.error = SICALC_STATUS_INVALID_TOKEN_FORMAT;
+            return -1;
+        }
+        return 1;
+    }
+    case SICALC_ACTION_ARGS1:
+    {
+        if (action->type & SICALC_ACTION_MAYBE_NO_BRACKETS)
+        {
+            sicalc_real result = 0.0;
+
+            if (!strreal(&token->raw[strlen(action->id)], &result))
+            {
+                return 0;
+            }
+        } else
+            if (!in_brackets(&token->raw[strlen(action->id)], '(')) return 0;
+
+        token->args[0] = malloc(sizeof(struct sicalc_token_s));
+        create_new_token(token->args[0], token->raw, strlen(action->id), strlen(token->raw) - strlen(action->id));
+        
+        return 1;
+    }
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Parsing operator arguments
+ * 
+ * @param token 
+ * @param action 
+ * @return int 1 - found and append
+ * @return int 0 - not found
+ * @return int -1 - parse error
+ */
+static int parse_operator_args(sicalc_token_t token, sicalc_action_t action)
+{
+    int braces_counter = 0, brackets_counter = 0;
+    int len = strlen(token->raw) - strlen(action->id) + 1;
+
+    if (len < 0) return 0;
+
+    for (int i = 0; i < len; i++)
+    {
+        char c = token->raw[i];
+
+        // take only out of brackets action
+        if (c == '(') brackets_counter++;
+        if (c == '{') braces_counter++;
+        if (c == ')') brackets_counter--;
+        if (c == '}') braces_counter--;
+
+        if (brackets_counter == 0 && braces_counter == 0 && !strncmp(&token->raw[i], action->id, strlen(action->id)))
+        {
+            token->args[0] = malloc(sizeof(struct sicalc_token_s));
+            create_new_token(token->args[0], token->raw, 0, i);
+
+            token->args[1] = malloc(sizeof(struct sicalc_token_s));
+            create_new_token(token->args[1], token->raw, i + strlen(action->id), strlen(token->raw) - i - strlen(action->id));
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Function to parse action arguments and create new tokens
+ * 
+ * @param token 
+ * @param action 
+ * @return int 1 - found and append
+ * @return int 0 - not found
+ * @return int -1 - parse error
+ */
+static int parse_args(sicalc_token_t token, sicalc_action_t action)
+{
+    // sicalc_action_t op = &action;
+
+    bool find = false;
+    if (action->type & SICALC_ACTION_FUNCTION)
+    {
+        find = parse_function_args(token, action);
+    }
+
+    if (action->type & SICALC_ACTION_OPERATOR)
+    {
+        find |= parse_operator_args(token, action);
+    }
+
+    if (find == 1) {
+        token->action = action;
+        DMSG("Find %s. Id: %s", token->raw, token->action->id);
+    } else {
+        return find;
+    }
+
+    if (ACTION_ARG_COUNT(action->type) > 0 && token->args[0] == NULL)
+        token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
+    
+    if (ACTION_ARG_COUNT(action->type) == 2 && token->args[1] == NULL)
+        token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
+
+    if (token->info.error != SICALC_STATUS_OK)
+    {
+        DMSG("Error: %d", token->info.error);
+        return -1;
+    }
+
+    return 1;
+}
+
+void parse_token(sicalc_token_t token, sicalc_actions_list_t extra_actions)
 {
     sicalc_real result;
     if (strreal(token->raw, &result))
@@ -91,65 +223,41 @@ void parse_token(sicalc_token_t token)
         return;
     }
 
-    for (int i = 0; i < ARRAY_SIZE(operators_table); i++)
+    int actions_count = std_actions.count;
+
+    if (extra_actions)
+        actions_count += extra_actions->count;
+
+    for (int i = 0; i < actions_count; i++)
     {
-        sicalc_action_t op = &operators_table[i];
+        sicalc_action_t action = NULL;
 
-        int index = get_token_start(token->raw, op);
+        if (i < std_actions.count)
+            action = &std_actions.actions[i];
+        else 
+            action = &extra_actions->actions[i];
+        
+        int parse_ret = parse_args(token, action);
+        if (parse_ret == -1)
+            return;
+        else if (parse_ret == 0)
+            continue;
 
-        if (index >= 0)
+        for (int j = 0; j < SICALC_TOKEN_ARGS_COUNT; j++)
         {
-            token->action = op;
-            DMSG("Find %s. Id: %s", token->raw, token->action->id);
-            
-            if (ACTION_ARG_COUNT(op->type) == 0)
+            if (token->args[j] != NULL)
             {
-                return;
-            }
+                DMSG("\tARG%d: %s", j, token->args[j]->raw);
+                parse_token(token->args[j], extra_actions);
 
-            if (op->type & SICALC_ACTION_OPERATOR && ACTION_ARG_COUNT(op->type) == 2)
-            {
-                token->args[0] = malloc(sizeof(struct sicalc_token_s));
-                create_new_token(token->args[0], token->raw, 0, index);
-
-                token->args[1] = malloc(sizeof(struct sicalc_token_s));
-                create_new_token(token->args[1], token->raw, index + strlen(op->id), strlen(token->raw) - index - strlen(op->id));
-            }
-
-            if (op->type & SICALC_ACTION_FUNCTION && ACTION_ARG_COUNT(op->type) == 1)
-            {
-                token->args[0] = malloc(sizeof(struct sicalc_token_s));
-                create_new_token(token->args[0], token->raw, strlen(op->id), strlen(token->raw) - strlen(op->id));
-            }
-
-            if (ACTION_ARG_COUNT(op->type) > 0 && token->args[0] == NULL)
-                    token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
-            
-            if (ACTION_ARG_COUNT(op->type) == 2 && token->args[1] == NULL)
-                    token->info.error = SICALC_STATUS_MISSING_ARGUMENT;
-
-            if (token->info.error != SICALC_STATUS_OK)
-            {
-                DMSG("Error: %d", token->info.error);
-                return;
-            }
-            
-            for (int j = 0; j < SICALC_TOKEN_ARGS_COUNT; j++)
-            {
-                if (token->args[j] != NULL)
+                if (token->args[j]->info.error != SICALC_STATUS_OK)
                 {
-                    DMSG("\tARG%d: %s", j, token->args[j]->raw);
-                    parse_token(token->args[j]);
-
-                    if (token->args[j]->info.error != SICALC_STATUS_OK)
-                    {
-                        token->info.error = SICALC_STATUS_SKIP;
-                    }
+                    token->info.error = SICALC_STATUS_SKIP;
                 }
             }
-
-            return;
         }
+
+        return;
     }
 
     token->info.error = SICALC_STATUS_UNKNOWN_ACTION;
@@ -179,6 +287,57 @@ void sicalc_erase_token(sicalc_token_t token)
     }
 }
 
+void sicalc_init_actions_list(sicalc_actions_list_t action_list)
+{
+    action_list->actions = NULL;
+    action_list->count = 0;
+}
+
+int sicalc_add_action(sicalc_actions_list_t action_list,
+                        const char* id,
+                        sicalc_action_info_t type,
+                        sicalc_real value,
+                        sicalc_action_fn function)
+{
+
+    if ((type & SICALC_ACTION_ARGS1 || type & SICALC_ACTION_ARGS2) && !function)
+        return -1;
+
+    sicalc_action_t new_action = NULL;
+    if (action_list->actions == NULL)
+    {
+        new_action = (struct sicalc_actions_list_s*)
+            malloc(sizeof(struct sicalc_actions_list_s));
+    } else {
+        new_action = (struct sicalc_actions_list_s*)
+            realloc(action_list->actions, sizeof(struct sicalc_actions_list_s) * (action_list->count + 1));
+    }
+
+    if (!new_action)
+        return -1;
+
+    new_action->id = strdup(id);
+    new_action->type = type;
+    new_action->value = value;
+    new_action->function = function;
+
+    action_list->actions = new_action;
+    action_list->count++;
+
+    return 0;
+}
+
+void sicalc_erase_actions_list(sicalc_actions_list_t action_list)
+{
+    for (int i = 0; i < action_list->count; i++)
+    {
+        free(action_list->actions[i].id);
+    }
+
+    free(action_list->actions);
+    action_list->count = 0;
+}
+
 sicalc_real sicalc_solve_token(sicalc_token_t token)
 {
     if (token->action != NULL)
@@ -192,15 +351,20 @@ sicalc_real sicalc_solve_token(sicalc_token_t token)
                 args_results[i] = sicalc_solve_token(token->args[i]);
             }
         }
-
-        token->result = token->action->function(args_results[0], args_results[1], &token->info);
+        
+        if (ACTION_ARG_COUNT(token->action->type) == 0)
+            token->result = token->action->value;
+        else
+            token->result = token->action->function(args_results[0], args_results[1], &token->info);
     }
 
     DMSG("Token %s result: %f", token->raw, token->result);
     return token->result;
 }
 
-sicalc_real sicalc_solve_string(const char* eq, sicalc_token_t token)
+sicalc_real sicalc_solve_string(const char* eq,
+                                sicalc_token_t token,
+                                sicalc_actions_list_t extra_actions)
 {
     if (!token) return 0.0;
 
@@ -212,7 +376,7 @@ sicalc_real sicalc_solve_string(const char* eq, sicalc_token_t token)
 
     if (!validate_brackets(token)) return 0.0;
 
-    parse_token(token);
+    parse_token(token, extra_actions);
 
     sicalc_solve_token(token);
 

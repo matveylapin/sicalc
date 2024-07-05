@@ -11,7 +11,7 @@ void TESTCASE(const char* eq, sicalc_real eq_ans)
     test_count++;
 
     SICALC_TOKEN_DEFINE(root_token);
-    sicalc_real ans = sicalc_solve_string(eq, &root_token);
+    sicalc_real ans = sicalc_solve_string(eq, &root_token, NULL);
     (void)root_token;
     
     if (fabs(ans - eq_ans) < 0.001)

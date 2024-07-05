@@ -138,25 +138,25 @@ sicalc_real factorial(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
     return result;
 }
 
-sicalc_real si_pi(sicalc_real arg1, sicalc_real arg2, sicalc_info_t ret)
-{
-    return (sicalc_real)M_PI;
-}
+struct sicalc_action_s actions_table[] = {
+    {"+",     SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, 0.0, sum},
+    {"-",     SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, 0.0, difference},
+    {"*",     SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, 0.0, multiplication},
+    {"/",     SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, 0.0, division},
+    {"^",     SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, 0.0, si_pow},
+    {"sqrt",  SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_sqrt},
+    {"log2",  SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_log2},
+    {"log10", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_log10},
+    {"ln",    SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_ln},
+    {"sin",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_sin},
+    {"cos",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_cos},
+    {"tan",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_tan},
+    {"exp",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_exp},
+    {"!",     SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION | SICALC_ACTION_MAYBE_NO_BRACKETS, 0.0, factorial},
+    {"pi",    SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION | SICALC_ACTION_MAYBE_NO_BRACKETS, (sicalc_real)M_PI, NULL}
+};
 
-struct sicalc_action_s operators_table[] = {
-    {"+", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, sum},
-    {"-", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, difference},
-    {"*", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, multiplication},
-    {"/", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, division},
-    {"^", SICALC_ACTION_ARGS2 | SICALC_ACTION_OPERATOR, si_pow},
-    {"sqrt", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_sqrt},
-    {"log2", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_log2},
-    {"log10", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_log10},
-    {"ln", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_ln},
-    {"sin", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_sin},
-    {"cos", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_cos},
-    {"tan", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_tan},
-    {"exp", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, si_exp},
-    {"!", SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, factorial},
-    {"pi", SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION, si_pi}
+struct sicalc_actions_list_s std_actions = {
+    .count =  sizeof(actions_table) / sizeof(struct sicalc_action_s),
+    .actions = actions_table
 };
