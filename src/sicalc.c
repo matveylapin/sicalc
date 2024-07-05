@@ -384,7 +384,6 @@ sicalc_real sicalc_solve_string(const char* eq,
 
     if (token->info.error == SICALC_STATUS_OK)
     {
-        puts("Start solve\n");
         sicalc_solve_token(token);
     }
 

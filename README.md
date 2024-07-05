@@ -2,7 +2,7 @@
 ## Build
 ### Linux / MacOS
 ```bash
-git clone
+git clone https://github.com/matveylapin/sicalc.git
 cmake -B build -DCMAKE_BUILD_TYPE=Release .
 cmake --build build
 ```
