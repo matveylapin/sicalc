@@ -1,6 +1,6 @@
 #include <sicalc/sicalc.h>
+#include <sicalc/sicalc_tools.h>
 
-#include "sicalc_tools.h"
 #include "operators.h"
 
 #include <stdio.h>
@@ -104,17 +104,23 @@ static int parse_function_args(sicalc_token_t token, sicalc_action_t action)
         return 1;
     }
     case SICALC_ACTION_ARGS1:
-    {
-        if (action->type & SICALC_ACTION_MAYBE_NO_BRACKETS)
+    {   
+        if (!in_brackets(&token->raw[strlen(action->id)], '('))
         {
-            sicalc_real result = 0.0;
-
-            if (!strreal(&token->raw[strlen(action->id)], &result))
+            if (action->type & SICALC_ACTION_MAYBE_NO_BRACKETS)
             {
-                return 0;
+                sicalc_real result = 0.0;
+
+                if (!strreal(&token->raw[strlen(action->id)], &result))
+                {
+                    token->info.error = SICALC_STATUS_INVALID_TOKEN_FORMAT;
+                    return -1;
+                }
+            } else {
+                token->info.error = SICALC_STATUS_INVALID_TOKEN_FORMAT;
+                return -1;
             }
-        } else
-            if (!in_brackets(&token->raw[strlen(action->id)], '(')) return 0;
+        }
 
         token->args[0] = malloc(sizeof(struct sicalc_token_s));
         create_new_token(token->args[0], token->raw, strlen(action->id), strlen(token->raw) - strlen(action->id));
@@ -179,8 +185,6 @@ static int parse_operator_args(sicalc_token_t token, sicalc_action_t action)
  */
 static int parse_args(sicalc_token_t token, sicalc_action_t action)
 {
-    // sicalc_action_t op = &action;
-
     bool find = false;
     if (action->type & SICALC_ACTION_FUNCTION)
     {
@@ -235,7 +239,7 @@ void parse_token(sicalc_token_t token, sicalc_actions_list_t extra_actions)
         if (i < std_actions.count)
             action = &std_actions.actions[i];
         else 
-            action = &extra_actions->actions[i];
+            action = &extra_actions->actions[i - std_actions.count];
         
         int parse_ret = parse_args(token, action);
         if (parse_ret == -1)
@@ -306,11 +310,11 @@ int sicalc_add_action(sicalc_actions_list_t action_list,
     sicalc_action_t new_action = NULL;
     if (action_list->actions == NULL)
     {
-        new_action = (struct sicalc_actions_list_s*)
-            malloc(sizeof(struct sicalc_actions_list_s));
+        new_action = (struct sicalc_action_s*)
+            malloc(sizeof(struct sicalc_action_s));
     } else {
-        new_action = (struct sicalc_actions_list_s*)
-            realloc(action_list->actions, sizeof(struct sicalc_actions_list_s) * (action_list->count + 1));
+        new_action = (struct sicalc_action_s*)
+            realloc(action_list->actions, sizeof(struct sicalc_action_s) * (action_list->count + 1));
     }
 
     if (!new_action)
@@ -378,7 +382,64 @@ sicalc_real sicalc_solve_string(const char* eq,
 
     parse_token(token, extra_actions);
 
-    sicalc_solve_token(token);
+    if (token->info.error == SICALC_STATUS_OK)
+    {
+        puts("Start solve\n");
+        sicalc_solve_token(token);
+    }
 
     return token->result;
+}
+
+void sicalc_print_error(sicalc_token_t token)
+{
+    switch (token->info.error)
+    {
+    case SICALC_STATUS_OK:
+        return;
+    case SICALC_STATUS_SKIP:
+    {
+        for (int i = 0; i < SICALC_TOKEN_ARGS_COUNT; i++)
+        {
+            if (token->args[i] != NULL) sicalc_print_error(token->args[i]);
+        }
+        return;
+    }
+    case SICALC_STATUS_ZERO_DEVISION:
+    {
+        printf("Zero devision in: %s\n", token->action->id);
+        return;
+    }
+    case SICALC_STATUS_NEGATINE_ARGUMENT:
+    {
+        printf("Negative argument in: %s\n", token->action->id);
+        return;
+    }
+    case SICALC_STATUS_MISSING_ARGUMENT:
+    {
+        printf("Missing argument for: %s\n", token->action->id);
+        return;
+    }
+    case SICALC_STATUS_UNKNOWN_ACTION:
+    {
+        printf("Unknown argument: %s\n", token->raw);
+        return;
+    }
+    case SICALC_STATUS_BRACKETS_ERROR:
+    {
+        char* underscore = malloc(strlen(token->raw) + 1);
+        memset(underscore, '_', strlen(token->raw));
+        underscore[token->info.index] = '^';
+        printf("Error while parsing brackets:\n\t%s\n\t%s\n", token->raw, underscore);
+        free(underscore);
+        return;
+    }
+    case SICALC_STATUS_INVALID_TOKEN_FORMAT:
+    {
+        printf("Invalid token %s format: %s\n", token->action->id, token->raw);
+        return;
+    }
+    default:
+        break;
+    }
 }

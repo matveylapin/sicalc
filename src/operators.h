@@ -153,7 +153,7 @@ struct sicalc_action_s actions_table[] = {
     {"tan",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_tan},
     {"exp",   SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION, 0.0, si_exp},
     {"!",     SICALC_ACTION_ARGS1 | SICALC_ACTION_FUNCTION | SICALC_ACTION_MAYBE_NO_BRACKETS, 0.0, factorial},
-    {"pi",    SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION | SICALC_ACTION_MAYBE_NO_BRACKETS, (sicalc_real)M_PI, NULL}
+    {"pi",    SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION, (sicalc_real)M_PI, NULL}
 };
 
 struct sicalc_actions_list_s std_actions = {

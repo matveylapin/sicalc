@@ -74,7 +74,7 @@ typedef sicalc_real (*sicalc_action_fn)(sicalc_real arg1, sicalc_real arg2, sica
 typedef struct sicalc_action_s
 {
     // Name of the action
-    const char* id;
+    char* id;
     // Type of the action
     sicalc_action_info_t type;
     // Value for 0 args variant
@@ -135,7 +135,8 @@ void sicalc_init_actions_list(sicalc_actions_list_t actions_list);
  * @return int -1 unsuccessful
  */
 int sicalc_add_action(sicalc_actions_list_t actions_list,
-                        const char* id, sicalc_action_info_t type,
+                        const char* id,
+                        sicalc_action_info_t type,
                         sicalc_real value,
                         sicalc_action_fn function);
 
@@ -165,5 +166,7 @@ sicalc_real sicalc_solve_string(const char* eq,
  * @return sicalc_real 
  */
 sicalc_real sicalc_solve_token(sicalc_token_t token);
+
+void sicalc_print_error(sicalc_token_t token);
 
 #endif // __SICALC_H__

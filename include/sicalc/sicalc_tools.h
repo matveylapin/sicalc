@@ -68,6 +68,13 @@ void remove_whitespaces(char* dest, const char* src)
     dest[shift] = '\0';
 }
 
+/**
+ * @brief Try to convert string to real number
+ * 
+ * @param str 
+ * @param r 
+ * @return int 
+ */
 int strreal(const char* str, sicalc_real* r)
 {
     int len;
