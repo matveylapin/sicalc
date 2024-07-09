@@ -5,6 +5,23 @@
 #include <sicalc/sicalc.h>
 #include <sicalc/sicalc_tools.h>
 
+#if defined(_WIN32) || defined(WIN32)
+char *strndup(char *str, int chars)
+{
+    char *buffer;
+    int n;
+
+    buffer = (char *) malloc(chars +1);
+    if (buffer)
+    {
+        for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
+        buffer[n] = 0;
+    }
+
+    return buffer;
+}
+#endif
+
 static struct option options_list[] =
 {
     {"key",  required_argument, 0, 'k'},

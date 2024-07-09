@@ -6,11 +6,20 @@ git clone https://github.com/matveylapin/sicalc.git
 cmake -B build -DCMAKE_BUILD_TYPE=Release .
 cmake --build build
 ```
+### Windows
+```powershell
+cmake -G "MinGW Makefiles" -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
+```
 ## Usage
 ### CLI tool:
 ```bash
 ./build/cli_sicalc "sin(pi/4)"
 ./build/cli_sicalc "sin(pi/x)" -k x=4 
+```
+### CLI tool (windows):
+```bash
+./build/cli_sicalc.exe "ln(1)"
 ```
 ---
 ### Add new functions:
