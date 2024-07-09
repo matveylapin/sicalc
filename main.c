@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
-#include <regex.h>
 
-#define SICALC_DEBUG
 #include <sicalc/sicalc.h>
 #include <sicalc/sicalc_tools.h>
 
@@ -24,48 +22,26 @@ void print_help(void)
 
 int parse_key(sicalc_actions_list_t actions_list, const char* key)
 {
-    int reti, ret = 0;
-    regex_t regex;
-    char msgbuf[100];
-
-    reti = regcomp(&regex, "^[a-zA-z]+[0-9]*=[+-]?([0-9]*[.])?[0-9]+$", REG_EXTENDED);
-    reti = regexec(&regex, key, 0, NULL, 0);
-
-    if (reti != 0)
-    {
-        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
-        printf("\tInvalid regex for %s: %s\n", key, msgbuf);
-        
-        ret = -1;
-    }
-
+    sicalc_real value;
+    char* action_id = strndup(key, strchr(key, '=') - key);
     char* value_str = strchr(key, '=') + 1;
     
-    if (!ret)
+    if (!strreal(value_str, &value))
     {
-        sicalc_real value = 0.0;
-
-        if (!strreal(value_str, &value))
-        {
-            printf("\tInvalid value for: %s\n", key);
-            ret = -1;
-        } else {
-            char* action_id = strndup(key, (int)value_str - (int)key - 1);
-
-            sicalc_add_action(actions_list,
-                            action_id,
-                            SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION,
-                            value,
-                            NULL);
-        }
+        printf("\tInvalid value for: %s\n", key);
+        return -1;
     }
 
-    if (ret != 0)
-    {
-        regfree(&regex);
-    }
 
-    return ret;
+    sicalc_add_action(actions_list,
+                action_id,
+                SICALC_ACTION_ARGS0 | SICALC_ACTION_FUNCTION,
+                value,
+                NULL);
+    
+    free(action_id);
+
+    return 0;
 }
 
 int parse_actions(sicalc_actions_list_t actions_list, int argc, char **argv)
